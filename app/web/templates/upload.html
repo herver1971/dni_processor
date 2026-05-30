@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page page--narrow">
+    <h1 class="page-title">Organizar <em>fotos de DNI</em> en un PDF imprimible</h1>
+    <p class="page-lede">
+        Subí las fotos de frentes y dorsos por separado. El sistema detecta automáticamente
+        los DNIs en cada imagen y te permite ajustar el recorte antes de generar el PDF final.
+    </p>
+
+    <form id="upload-form" data-component="upload">
+        <div class="upload-grid">
+            <label class="drop-zone" data-zone="frentes">
+                <p class="drop-zone__label">Frentes</p>
+                <p class="drop-zone__hint">Arrastrá las fotos o hacé click</p>
+                <span class="drop-zone__count" data-count="0">0 archivos</span>
+                <input
+                    type="file"
+                    name="frentes"
+                    class="drop-zone__file-input"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+            </label>
+
+            <label class="drop-zone" data-zone="dorsos">
+                <p class="drop-zone__label">Dorsos</p>
+                <p class="drop-zone__hint">Arrastrá las fotos o hacé click</p>
+                <span class="drop-zone__count" data-count="0">0 archivos</span>
+                <input
+                    type="file"
+                    name="dorsos"
+                    class="drop-zone__file-input"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+            </label>
+        </div>
+
+        <div class="button-row button-row--end">
+            <button type="submit" class="button" id="upload-submit" disabled>
+                Procesar
+            </button>
+        </div>
+    </form>
+</div>
+
+{# Overlay de procesamiento (se muestra al enviar) #}
+<div class="overlay hidden" id="processing-overlay">
+    <div class="overlay__content">
+        <div class="overlay__spinner"></div>
+        <p class="overlay__title" id="processing-message">Procesando…</p>
+        <p class="overlay__detail" id="processing-detail">Subiendo imágenes</p>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/upload.js" defer></script>
+{% endblock %}

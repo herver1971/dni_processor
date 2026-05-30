@@ -1,0 +1,214 @@
+{# Partial de matcheo (v0.3.1b.1) — refrescable vía HTMX.
+
+   Estructura:
+   - stats-bar arriba
+   - lista de pares: cada par = handle + #pos + frente | conector | DORSO-SLOT
+   - lista de huérfanos
+   - footer con botón Generar PDF
+
+   .dorso-slot es el contenedor SortableJS que envuelve la tarjeta del dorso.
+   Mover una tarjeta dorso entre slots se hace con SortableJS group="dorsos".
+#}
+
+{# Indexar crops por id #}
+{% set crops_by_id = {} %}
+{% for c in state.crops %}
+    {% set _ = crops_by_id.update({c.crop_id: c}) %}
+{% endfor %}
+
+{# Calcular huérfanos #}
+{% set paired_ids_ns = namespace(ids=[]) %}
+{% for p in state.pairs %}
+    {% set _ = paired_ids_ns.ids.append(p.frente_crop_id) %}
+    {% set _ = paired_ids_ns.ids.append(p.dorso_crop_id) %}
+{% endfor %}
+{% set paired_ids = paired_ids_ns.ids %}
+
+{% set unpaired_frentes = [] %}
+{% set unpaired_dorsos = [] %}
+{% for c in state.crops %}
+    {% if c.status.value == 'confirmed' and c.crop_id not in paired_ids %}
+        {% if c.side.value == 'frente' %}
+            {% set _ = unpaired_frentes.append(c) %}
+        {% elif c.side.value == 'dorso' %}
+            {% set _ = unpaired_dorsos.append(c) %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+{% set n_frentes_ns = namespace(n=0) %}
+{% set n_dorsos_ns = namespace(n=0) %}
+{% for c in state.crops %}
+    {% if c.status.value == 'confirmed' %}
+        {% if c.side.value == 'frente' %}{% set n_frentes_ns.n = n_frentes_ns.n + 1 %}{% endif %}
+        {% if c.side.value == 'dorso' %}{% set n_dorsos_ns.n = n_dorsos_ns.n + 1 %}{% endif %}
+    {% endif %}
+{% endfor %}
+
+<div class="stats-bar">
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Frentes</span>
+        <span class="stats-bar__value">{{ n_frentes_ns.n }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Dorsos</span>
+        <span class="stats-bar__value">{{ n_dorsos_ns.n }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Pares</span>
+        <span class="stats-bar__value">{{ state.pairs | length }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Huérfanos</span>
+        <span class="stats-bar__value">{{ (unpaired_frentes | length) + (unpaired_dorsos | length) }}</span>
+    </div>
+</div>
+
+{# === Lista de pares === #}
+<section class="section">
+    <h2 class="section-title">
+        Pares
+        <span class="section-title__count">{{ state.pairs | length }}</span>
+    </h2>
+
+    {% if state.pairs %}
+    <p class="match-hint">
+        <strong>Arrastrá el handle ⋮⋮</strong> a la izquierda de una fila para reordenar verticalmente.
+        <strong>Arrastrá una tarjeta de dorso</strong> hacia otro par para hacer swap. Click en cualquier
+        miniatura para ver más grande.
+    </p>
+    <div class="pair-list" id="pair-list">
+        {% for p in state.pairs %}
+        {% set f = crops_by_id.get(p.frente_crop_id) %}
+        {% set d = crops_by_id.get(p.dorso_crop_id) %}
+        <div class="pair-row" data-pair-id="{{ p.pair_id }}" data-position="{{ p.position }}" data-frente-id="{{ p.frente_crop_id }}" data-dorso-id="{{ p.dorso_crop_id }}">
+            <div class="pair-row__handle" title="Arrastrá para reordenar verticalmente">⋮⋮</div>
+            <div class="pair-row__position">#{{ p.position + 1 }}</div>
+
+            {# === Frente (izquierda) === #}
+            <div class="pair-card pair-card--frente" data-crop-id="{{ p.frente_crop_id }}" {% if f and f.dni_number %}data-dni-number="{{ f.dni_number }}"{% endif %}>
+                <img src="/api/v1/sessions/{{ session_id }}/crops/{{ p.frente_crop_id }}/final" alt="Frente" class="pair-card__image">
+                <div class="pair-card__meta">
+                    {% if f and f.dni_number %}
+                    <div class="pair-card__dni">
+                        <span class="pair-card__dni-label">leído por OCR — verificá</span>
+                        <span class="pair-card__dni-number">{{ f.dni_number }}</span>
+                    </div>
+                    {% else %}
+                    <div class="pair-card__dni pair-card__dni--missing">
+                        <span class="pair-card__dni-label">sin lectura OCR</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# === Conector + badge === #}
+            <div class="pair-row__connector">
+                <span class="pair-row__badge pair-row__badge--{{ p.origin.value }}">
+                    {% if p.origin.value == 'ocr_exact' %}OCR exacto
+                    {% elif p.origin.value == 'ocr_approximate' %}OCR aprox.
+                    {% else %}manual
+                    {% endif %}
+                </span>
+            </div>
+
+            {# === Dorso (slot SortableJS) === #}
+            <div class="dorso-slot" data-pair-id="{{ p.pair_id }}">
+                <div class="pair-card pair-card--dorso" data-crop-id="{{ p.dorso_crop_id }}" {% if d and d.dni_number %}data-dni-number="{{ d.dni_number }}"{% endif %}>
+                    <img src="/api/v1/sessions/{{ session_id }}/crops/{{ p.dorso_crop_id }}/final" alt="Dorso" class="pair-card__image">
+                    <div class="pair-card__meta">
+                        {% if d and d.dni_number %}
+                        <div class="pair-card__dni">
+                            <span class="pair-card__dni-label">leído por OCR — verificá</span>
+                            <span class="pair-card__dni-number">{{ d.dni_number }}</span>
+                        </div>
+                        {% else %}
+                        <div class="pair-card__dni pair-card__dni--missing">
+                            <span class="pair-card__dni-label">sin lectura OCR</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p class="empty-state__text">Todavía no hay pares. Las sugerencias se generan automáticamente.</p>
+        <div style="margin-top: var(--s-4);">
+            <button class="button" data-action="generate-suggestions">Generar sugerencias por OCR</button>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+{# === Huérfanos === #}
+{% if unpaired_frentes or unpaired_dorsos %}
+<section class="section">
+    <h2 class="section-title">
+        Sin emparejar
+        <span class="section-title__count">{{ (unpaired_frentes | length) + (unpaired_dorsos | length) }}</span>
+    </h2>
+    <p class="page-lede" style="margin-bottom: var(--s-4); font-size: 14px;">
+        Arrastrá un dorso huérfano hacia el slot de un par para asignarlo.
+    </p>
+    <div class="orphans-grid">
+        {% if unpaired_frentes %}
+        <div class="orphans-column">
+            <h3 class="orphans-column__title">Frentes sin par</h3>
+            <div class="orphans-list">
+                {% for f in unpaired_frentes %}
+                <div class="orphan-card" data-crop-id="{{ f.crop_id }}" data-side="frente" {% if f.dni_number %}data-dni-number="{{ f.dni_number }}"{% endif %}>
+                    <img src="/api/v1/sessions/{{ session_id }}/crops/{{ f.crop_id }}/final" alt="Frente huérfano" class="orphan-card__image">
+                    {% if f.dni_number %}
+                    <span class="orphan-card__dni">{{ f.dni_number }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if unpaired_dorsos %}
+        <div class="orphans-column">
+            <h3 class="orphans-column__title">Dorsos sin par <span class="orphans-column__hint">(arrastrables)</span></h3>
+            <div class="orphans-list" id="orphan-dorsos">
+                {% for d in unpaired_dorsos %}
+                <div class="orphan-card orphan-card--draggable" data-crop-id="{{ d.crop_id }}" data-side="dorso" {% if d.dni_number %}data-dni-number="{{ d.dni_number }}"{% endif %}>
+                    <img src="/api/v1/sessions/{{ session_id }}/crops/{{ d.crop_id }}/final" alt="Dorso huérfano" class="orphan-card__image">
+                    {% if d.dni_number %}
+                    <span class="orphan-card__dni">{{ d.dni_number }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+{# === Footer === #}
+<div class="footer-bar" style="margin-top: var(--s-7); padding-top: var(--s-5); border-top: 1px solid var(--rule);">
+    {% if state.can_generate_pdf %}
+    <div class="footer-bar__status">
+        <span class="footer-bar__status-badge footer-bar__status-badge--ready">✓ Listo</span>
+        <span class="footer-bar__status-text">
+            {{ state.pairs | length }} {% if state.pairs | length == 1 %}par emparejado{% else %}pares emparejados{% endif %} — generá el PDF cuando quieras
+        </span>
+    </div>
+    <button class="button" data-action="generate-pdf">
+        Generar PDF →
+    </button>
+    {% else %}
+    <div class="footer-bar__status">
+        <span class="footer-bar__status-badge footer-bar__status-badge--waiting">Pendiente</span>
+        <span class="footer-bar__status-text">
+            {{ state.imbalance_message or 'Falta completar el matcheo' }}
+        </span>
+    </div>
+    <button class="button" disabled title="{{ state.imbalance_message or 'Completá el matcheo primero' }}">
+        Generar PDF →
+    </button>
+    {% endif %}
+</div>

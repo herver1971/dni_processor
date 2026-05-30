@@ -1,0 +1,267 @@
+{# Partial: contenido de la pantalla de revisión. Refrescable vía HTMX. #}
+
+{% set stats = state %}
+<div class="stats-bar">
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Estado</span>
+        <span class="stats-bar__value">{{ stats.status }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Imágenes</span>
+        <span class="stats-bar__value">{{ stats.images | length }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Recortes detectados</span>
+        <span class="stats-bar__value">{{ stats.crops | length }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Confirmados</span>
+        <span class="stats-bar__value">{{ stats.n_confirmed_crops }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Pendientes</span>
+        <span class="stats-bar__value">{{ stats.n_pending_crops }}</span>
+    </div>
+    <div class="stats-bar__item">
+        <span class="stats-bar__label">Sin detectar</span>
+        <span class="stats-bar__value">{{ stats.n_images_failed_detection }}</span>
+    </div>
+</div>
+
+{# === Sección: Frentes auto-detectados (pendientes) === #}
+{% set pending_frentes = [] %}
+{% for c in stats.crops %}
+    {% if c.side.value == 'frente' and c.status.value == 'pending' %}
+        {% set _ = pending_frentes.append(c) %}
+    {% endif %}
+{% endfor %}
+<section class="section">
+    <h2 class="section-title">
+        Frentes detectados
+        <span class="section-title__count">{{ pending_frentes | length }} pendientes</span>
+    </h2>
+    {% if pending_frentes %}
+    <div class="crop-grid">
+        {% for crop in pending_frentes %}
+        <article class="crop-card crop-card--pending" data-crop-id="{{ crop.crop_id }}" data-side="frente">
+            <div class="crop-card__header">
+                <span class="crop-card__title">{{ crop.crop_id[:8] }}</span>
+                <span class="crop-card__status crop-card__status--pending">pendiente</span>
+            </div>
+            <div class="crop-card__image-wrap">
+                <img
+                    src="/api/v1/sessions/{{ session_id }}/crops/{{ crop.crop_id }}/wide"
+                    alt="Recorte amplio del DNI"
+                    data-component="auto-crop"
+                    data-crop-id="{{ crop.crop_id }}"
+                    {% if crop.suggested_bbox %}
+                    data-suggested-x="{{ crop.suggested_bbox.x }}"
+                    data-suggested-y="{{ crop.suggested_bbox.y }}"
+                    data-suggested-w="{{ crop.suggested_bbox.width }}"
+                    data-suggested-h="{{ crop.suggested_bbox.height }}"
+                    {% endif %}
+                    crossorigin="anonymous">
+            </div>
+            <div class="crop-card__actions">
+                <button class="button button--small button--secondary" data-action="rotate" data-crop-id="{{ crop.crop_id }}">
+                    Rotar 90°
+                </button>
+                <div class="button-row">
+                    <button class="button button--small button--danger" data-action="discard" data-crop-id="{{ crop.crop_id }}">
+                        Descartar
+                    </button>
+                    <button class="button button--small" data-action="confirm" data-crop-id="{{ crop.crop_id }}">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="section--empty">Todos los frentes detectados ya fueron confirmados</p>
+    {% endif %}
+</section>
+
+{# === Sección: Imágenes que fallaron detección (frente o dorso) === #}
+{% set images_needing_manual = [] %}
+{% for img in stats.images %}
+    {% if img.status.value == 'failed_detection' or img.declared_side.value == 'dorso' %}
+        {% set _ = images_needing_manual.append(img) %}
+    {% endif %}
+{% endfor %}
+
+<section class="section">
+    <h2 class="section-title">
+        Marcar manualmente
+        <span class="section-title__count">{{ images_needing_manual | length }} imágenes</span>
+    </h2>
+    {% if images_needing_manual %}
+    <div class="crop-grid">
+        {% for img in images_needing_manual %}
+        {# Mostrar la imagen original con Cropper para que el usuario marque DNIs #}
+        {% set crops_from_this = stats.crops | selectattr('source_image_id', 'equalto', img.image_id) | list %}
+        {% set has_crops = crops_from_this | length > 0 %}
+        <article class="crop-card{% if has_crops %} crop-card--has-marks{% endif %}" data-image-id="{{ img.image_id }}" data-side="{{ img.declared_side }}">
+            <div class="crop-card__header">
+                <span class="crop-card__title">{{ img.declared_side }} — {{ img.original_filename | truncate(28) }}</span>
+                <span class="crop-card__status {% if has_crops %}crop-card__status--confirmed{% else %}crop-card__status--pending{% endif %}">
+                    {% if has_crops %}
+                        ✓ {{ crops_from_this | length }} marcado{% if crops_from_this | length != 1 %}s{% endif %}
+                    {% else %}
+                        sin marcar
+                    {% endif %}
+                </span>
+            </div>
+            <div class="crop-card__image-wrap">
+                <img
+                    src="/api/v1/sessions/{{ session_id }}/images/{{ img.image_id }}"
+                    alt="Imagen completa"
+                    data-component="manual-crop"
+                    data-image-id="{{ img.image_id }}"
+                    data-side="{{ img.declared_side }}"
+                    crossorigin="anonymous">
+            </div>
+
+            {# Mini-galería de los recortes ya hechos sobre esta imagen #}
+            {% if has_crops %}
+            <div class="crop-card__marks">
+                <p class="crop-card__marks-label">Recortes hechos</p>
+                <div class="crop-card__marks-grid">
+                    {% for c in crops_from_this %}
+                    <div class="mark-thumb" data-crop-id="{{ c.crop_id }}">
+                        <img src="/api/v1/sessions/{{ session_id }}/crops/{{ c.crop_id }}/final" alt="Recorte {{ loop.index }}">
+                        <button class="mark-thumb__delete" data-action="discard" data-crop-id="{{ c.crop_id }}" title="Descartar este recorte">×</button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="crop-card__actions">
+                <button class="button button--small button--secondary" data-action="rotate-manual" data-image-id="{{ img.image_id }}">
+                    Rotar 90°
+                </button>
+                <div class="button-row">
+                    <button class="button button--small" data-action="add-manual-crop" data-image-id="{{ img.image_id }}" data-side="{{ img.declared_side }}">
+                        {% if has_crops %}Agregar otro recorte{% else %}Marcar recorte{% endif %}
+                    </button>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="section--empty">No hay imágenes pendientes de marcar manualmente</p>
+    {% endif %}
+</section>
+
+{# === Sección: Confirmados (resumen) ===
+   Solo mostramos acá los FRENTES auto-detectados confirmados. Los recortes
+   manuales (dorsos y frentes-fallidos) aparecen en su propia card de imagen
+   en la sección "Marcar manualmente", para no duplicarlos. #}
+{% set confirmed = [] %}
+{% set manual_source_ids = images_needing_manual | map(attribute='image_id') | list %}
+{% for c in stats.crops %}
+    {% if c.status.value == 'confirmed' and c.source_image_id not in manual_source_ids %}
+        {% set _ = confirmed.append(c) %}
+    {% endif %}
+{% endfor %}
+{% if confirmed %}
+<section class="section">
+    <h2 class="section-title">
+        Confirmados
+        <span class="section-title__count">{{ confirmed | length }} listos</span>
+    </h2>
+    <div class="crop-grid">
+        {% for crop in confirmed %}
+        <article class="crop-card crop-card--confirmed" data-crop-id="{{ crop.crop_id }}">
+            <div class="crop-card__header">
+                <span class="crop-card__title">{{ crop.side }} — {{ crop.crop_id[:8] }}</span>
+                <span class="crop-card__status crop-card__status--confirmed">confirmado</span>
+            </div>
+            <img
+                class="crop-card__final-image"
+                src="/api/v1/sessions/{{ session_id }}/crops/{{ crop.crop_id }}/final"
+                alt="Recorte final">
+            <div class="crop-card__actions">
+                <button class="button button--small button--danger" data-action="discard-confirmed" data-crop-id="{{ crop.crop_id }}">
+                    Descartar
+                </button>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{# === Footer: estado y botón continuar ===
+   Calculamos qué falta para terminar:
+   - Frentes auto-detectados pendientes (status='pending')
+   - Imágenes en la sección "Marcar manualmente" sin NINGÚN recorte hecho
+   La sesión se considera "lista" cuando:
+   - Ningún frente auto-detectado queda pendiente
+   - Cada imagen manual tiene al menos un recorte confirmado
+#}
+{% set images_without_marks = [] %}
+{% for img in images_needing_manual %}
+    {# Usamos namespace porque {% set %} dentro de un for-loop no escapa al
+       scope exterior — es uno de los gotchas conocidos de Jinja2.
+       Ref: https://jinja.palletsprojects.com/en/stable/templates/#assignments #}
+    {% set ns = namespace(has_marks=false) %}
+    {% for c in stats.crops %}
+        {% if c.source_image_id == img.image_id and c.status.value == 'confirmed' %}
+            {% set ns.has_marks = true %}
+        {% endif %}
+    {% endfor %}
+    {% if not ns.has_marks %}
+        {% set _ = images_without_marks.append(img) %}
+    {% endif %}
+{% endfor %}
+
+{% set n_pending_auto = pending_frentes | length %}
+{% set n_images_unmarked = images_without_marks | length %}
+
+{# Contamos crops confirmados manualmente (sin usar selectattr porque
+   no soporta acceso a .value de enums) #}
+{% set confirmed_count_ns = namespace(n=0) %}
+{% for c in stats.crops %}
+    {% if c.status.value == 'confirmed' %}
+        {% set confirmed_count_ns.n = confirmed_count_ns.n + 1 %}
+    {% endif %}
+{% endfor %}
+{% set n_confirmed_total = confirmed_count_ns.n %}
+
+{% set everything_ready = n_pending_auto == 0 and n_images_unmarked == 0 and stats.crops | length > 0 %}
+
+<div class="footer-bar" style="margin-top: var(--s-7); padding-top: var(--s-5); border-top: 1px solid var(--rule);">
+    {% if everything_ready %}
+    <div class="footer-bar__status">
+        <span class="footer-bar__status-badge footer-bar__status-badge--ready">✓ Todo listo</span>
+        <span class="footer-bar__status-text">
+            {{ n_confirmed_total }} recorte{% if n_confirmed_total != 1 %}s{% endif %} confirmado{% if n_confirmed_total != 1 %}s{% endif %} — pasá al matcheo cuando quieras
+        </span>
+    </div>
+    <a class="button" href="/sessions/{{ session_id }}/match">
+        Continuar al matcheo →
+    </a>
+    {% else %}
+    <div class="footer-bar__status">
+        <span class="footer-bar__status-badge footer-bar__status-badge--waiting">Pendiente</span>
+        <span class="footer-bar__status-text">
+            {% if n_pending_auto > 0 and n_images_unmarked > 0 %}
+                Falta confirmar {% if n_pending_auto == 1 %}1 frente{% else %}{{ n_pending_auto }} frentes{% endif %} y marcar {% if n_images_unmarked == 1 %}1 imagen{% else %}{{ n_images_unmarked }} imágenes{% endif %}
+            {% elif n_pending_auto > 0 %}
+                Falta confirmar {% if n_pending_auto == 1 %}1 frente detectado{% else %}{{ n_pending_auto }} frentes detectados{% endif %} automáticamente
+            {% elif n_images_unmarked > 0 %}
+                Falta marcar al menos un recorte en {% if n_images_unmarked == 1 %}1 imagen{% else %}{{ n_images_unmarked }} imágenes{% endif %}
+            {% else %}
+                Sin recortes todavía
+            {% endif %}
+        </span>
+    </div>
+    <button class="button" disabled title="Completá los recortes pendientes para continuar">
+        Continuar al matcheo →
+    </button>
+    {% endif %}
+</div>

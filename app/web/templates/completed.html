@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page page--narrow" data-session-id="{{ session_id }}">
+
+    <div class="completed-hero">
+        <span class="completed-hero__badge">✓ PDF generado</span>
+        <h1 class="page-title" style="margin-bottom: var(--s-3);">Tu <em>PDF</em> está listo</h1>
+        <p class="page-lede" style="margin-bottom: var(--s-6);">
+            Se generó un PDF A4 con {{ state.pairs | length }}
+            {% if state.pairs | length == 1 %}par{% else %}pares{% endif %} de DNI,
+            ordenados como los emparejaste. Descargalo o empezá un trámite nuevo.
+        </p>
+    </div>
+
+    <div class="completed-actions">
+        <a class="button" href="/api/v1/sessions/{{ session_id }}/output.pdf?download=1">
+            Descargar PDF
+        </a>
+        <button class="button button--secondary" data-action="start-new">
+            Empezar otro trámite
+        </button>
+    </div>
+
+    <div class="completed-preview">
+        <iframe
+            src="/api/v1/sessions/{{ session_id }}/output.pdf#view=FitH"
+            title="Previsualización del PDF generado"
+            class="completed-preview__frame">
+        </iframe>
+        <p class="completed-preview__note">
+            Si la previsualización no carga, descargá el PDF directamente con el botón de arriba.
+        </p>
+    </div>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/completed.js" defer></script>
+{% endblock %}

@@ -1,0 +1,107 @@
+# ============================================================
+# DNI Processor — systemd unit
+# ============================================================
+#
+# Servicio FastAPI/Uvicorn ejecutado como `hernan`, accesible sólo por
+# 127.0.0.1 (la red expuesta es Tailscale, que termina sobre el loopback).
+#
+# Instalación:
+#   sudo cp deployment/dni_processor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable dni_processor.service
+#   sudo systemctl start dni_processor.service
+#
+# Monitoreo:
+#   systemctl status dni_processor
+#   journalctl -u dni_processor -f
+#
+# Ajustar `User=`, `WorkingDirectory=` y `ExecStart=` si el proyecto vive
+# en otro path. Ver deployment/README_DEPLOY.md.
+# ============================================================
+
+[Unit]
+Description=DNI Processor — Organizador de DNIs argentinos para uso notarial
+Documentation=file:///home/hernan/Documentos/Proyectos_Github/dni_processor/README.md
+# Necesitamos red para descargas de modelos en primer uso (idealmente
+# ya están pre-descargadas vía scripts/preload_models.py) y para que
+# Tailscale pueda enrutar el tráfico entrante.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hernan
+Group=hernan
+
+WorkingDirectory=/home/hernan/Documentos/Proyectos_Github/dni_processor
+
+# pydantic-settings lee /home/hernan/Documentos/Proyectos_Github/dni_processor/.env automáticamente
+# en arranque. No usamos EnvironmentFile= aquí para evitar duplicación.
+#
+# La única variable que el unit setea por su cuenta es PYTHONUNBUFFERED:
+# garantiza que `print` / `logging` lleguen a journald sin estar
+# bufferadas, así `journalctl -f` muestra logs en tiempo real.
+Environment=PYTHONUNBUFFERED=1
+
+# Asume venv en /home/hernan/Documentos/Proyectos_Github/dni_processor/.venv (instrucciones en README_DEPLOY).
+ExecStart=/home/hernan/Documentos/Proyectos_Github/dni_processor/.venv/bin/python -m app.main
+
+# Restart automático ante crash, con backoff. Si crashea 5 veces en
+# 5 minutos, systemd se rinde y marca el servicio como failed —
+# eso te avisa por journalctl que hay algo serio, en lugar de un
+# loop infinito de restarts silenciosos.
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+# Timeouts. El servicio arranca rápido (~2s sin pre-carga de modelos);
+# el cleanup background task se cancela en shutdown sin demora.
+TimeoutStartSec=30s
+TimeoutStopSec=15s
+
+# ============================================================
+# Hardening del proceso
+# ============================================================
+# Bajo costo, alto valor: si algún día hay una vulnerabilidad en una
+# dependencia, el blast radius queda contenido.
+
+# El proceso no puede ganar privilegios (suid, capabilities, etc.)
+NoNewPrivileges=true
+
+# Filesystem read-only excepto los paths declarados explícitamente.
+# /etc, /usr, /boot y similares quedan blindados a escritura.
+ProtectSystem=strict
+
+# El home de otros usuarios queda invisible. /home/hernan queda
+# accesible porque corremos como `hernan`.
+ProtectHome=read-only
+
+# Permitimos escribir SÓLO al data dir del proyecto y a los caches de
+# modelos. Si querés que el data dir viva en otro lugar, ajustá acá
+# (y debe coincidir con DNI_DATA_DIR en .env).
+ReadWritePaths=/home/hernan/Documentos/Proyectos_Github/dni_processor/data
+ReadWritePaths=/home/hernan/.cache/dni_processor
+ReadWritePaths=/home/hernan/.EasyOCR
+
+# /tmp privado para el proceso (no afecta a otros procesos).
+PrivateTmp=true
+
+# Bloquea acceso a /proc/<pid> de otros procesos.
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Sin acceso a dispositivos de hardware (cámara, micrófono, USB, etc.)
+PrivateDevices=true
+
+# Restricciones de syscalls poco usadas que la app no necesita.
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# Sólo permite los address families necesarios (IPv4/IPv6/Unix).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

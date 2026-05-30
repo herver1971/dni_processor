@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es"{% if debug %} data-debug="true"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} · DNI Processor</title>
+
+    {# Tipografía: Fraunces (display) + IBM Plex Sans (body). #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    {# Cropper.js - solo en review.html, pero lo dejamos en base por simplicidad #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+
+    {# HTMX #}
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <header class="masthead">
+        <div class="masthead__inner">
+            <a href="/" class="masthead__brand">
+                <span class="masthead__monogram">DNI</span>
+                <span class="masthead__title">Processor</span>
+            </a>
+            <span class="masthead__tagline">organizador notarial · auto-alojado</span>
+        </div>
+    </header>
+
+    <main class="page">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <span class="footer__text">v{{ version | default('0.3.0b') }} · servicio local</span>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

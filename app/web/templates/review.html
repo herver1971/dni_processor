@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page" data-session-id="{{ session_id }}">
+
+    <div class="button-row button-row--between" style="margin-bottom: var(--s-5);">
+        <h1 class="page-title" style="margin: 0;">Revisar <em>recortes</em></h1>
+        <button
+            class="button button--danger button--small"
+            data-action="discard-session"
+            data-session-id="{{ session_id }}">
+            Recomenzar
+        </button>
+    </div>
+
+    <p class="page-lede">
+        Para cada DNI, ajustá el rectángulo si hace falta y confirmá. Los dorsos los marcás
+        manualmente desde cero. Cuando todos estén confirmados, vas al matcheo.
+    </p>
+
+    <div id="review-content"
+         hx-get="/sessions/{{ session_id }}/review/partial"
+         hx-trigger="refreshReview from:body"
+         hx-swap="innerHTML">
+        {% include "partials/review_content.html" %}
+    </div>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<script src="/static/js/review.js" defer></script>
+{% endblock %}

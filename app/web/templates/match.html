@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page" data-session-id="{{ session_id }}">
+
+    <div class="button-row button-row--between" style="margin-bottom: var(--s-5);">
+        <h1 class="page-title" style="margin: 0;">Emparejar <em>frentes y dorsos</em></h1>
+        <a class="button button--secondary button--small" href="/sessions/{{ session_id }}/review">
+            ← Volver a revisar
+        </a>
+    </div>
+
+    <p class="page-lede">
+        Cada frente debe quedar emparejado con su dorso. Las sugerencias automáticas se basan
+        en el número de DNI leído por OCR. Podés reordenar las filas y mover dorsos entre pares
+        arrastrándolos.
+    </p>
+
+    <div id="match-content"
+         hx-get="/sessions/{{ session_id }}/match/partial"
+         hx-trigger="refreshMatch from:body"
+         hx-swap="innerHTML">
+        {% include "partials/match_content.html" %}
+    </div>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+{# SortableJS para drag-and-drop (~10KB minified, dependencia chica) #}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="/static/js/match.js" defer></script>
+{% endblock %}

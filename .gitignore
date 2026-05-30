@@ -1,0 +1,141 @@
+# ============================================================
+# DNI Processor — .gitignore
+# ============================================================
+
+# --- Python bytecode y cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# --- Entornos virtuales ---
+.venv/
+.venv_probe/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Distribución y build ---
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+pip-wheel-metadata/
+.installed.cfg
+MANIFEST
+
+# --- Testing y cobertura ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# --- Type checkers y linters ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pyre/
+.pytype/
+
+# --- IDEs y editores ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# --- SO ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# DATOS SENSIBLES — CRÍTICO PARA CONTEXTO NOTARIAL
+# ============================================================
+
+# --- Imágenes reales de DNIs (NUNCA commitear) ---
+tests/fixtures/images/real/
+tests/fixtures/images/*.jpg
+tests/fixtures/images/*.jpeg
+tests/fixtures/images/*.png
+tests/fixtures/images/*.heic
+tests/fixtures/images/*.webp
+!tests/fixtures/images/synthetic/
+!tests/fixtures/images/README.md
+
+# --- PDFs generados (pueden contener datos personales) ---
+*.pdf
+!docs/**/*.pdf
+
+# --- Working directories de procesamiento ---
+data/work/
+data/output/
+data/sessions/
+/var/lib/dni_processor/
+
+# --- Base de datos (si se activa Fase 5) ---
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/backups/
+
+# --- Modelos descargados por EasyOCR (pesados, se regeneran) ---
+.EasyOCR/
+easyocr_models/
+*.pth
+*.onnx
+
+# ============================================================
+# SECRETOS Y CONFIGURACIÓN LOCAL
+# ============================================================
+
+# --- Variables de entorno ---
+.env
+.env.local
+.env.*.local
+.envrc
+
+# --- Configuración local ---
+config.local.*
+secrets.*
+*.key
+*.pem
+*.crt
+credentials.json
+
+# --- Logs ---
+*.log
+logs/
+log/
+
+# ============================================================
+# DELIVERABLES Y TEMPORALES
+# ============================================================
+
+# --- ZIPs de deliverable (se regeneran) ---
+deliverable/
+*.zip
+!docs/**/*.zip
+
+# --- Archivos temporales del sistema ---
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# --- Notebooks (si se usan para exploración) ---
+*.ipynb_checkpoints/
+.jupyter/

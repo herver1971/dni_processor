@@ -1,0 +1,102 @@
+site_name: DNI Processor
+site_description: >
+  Servicio auto-alojado para organizar fotografías de DNIs argentinos
+  en un PDF A4 imprimible. Uso notarial — procesa localmente, sin enviar
+  datos a servicios externos.
+site_author: Hernan
+site_url: https://herver1971.github.io/dni_processor/
+docs_dir: docs
+site_dir: site
+
+repo_name: dni_processor
+repo_url: https://github.com/herver1971/dni_processor
+
+theme:
+  name: material
+  language: es
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo oscuro
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo claro
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang: es
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            heading_level: 3
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: En esta página
+
+nav:
+  - Inicio: index.md
+  - Guía de uso:
+    - Quickstart: guia/quickstart.md
+    - Flujo completo: guia/flujo.md
+    - Consejos para fotografiar DNIs: guia/fotografia.md
+  - Arquitectura:
+    - Visión general: arquitectura/overview.md
+    - Pipeline de procesamiento: arquitectura/pipeline.md
+    - Sesiones y estado: arquitectura/sesiones.md
+    - Decisiones de diseño: arquitectura/decisiones.md
+  - Referencia API:
+    - Endpoints: referencia/api.md
+    - Schemas: referencia/schemas.md
+    - Módulos internos: referencia/modulos.md
+  - Deployment:
+    - Instalación en Kubuntu: deployment/instalacion.md
+    - Acceso por Tailscale: deployment/tailscale.md
+    - Configuración (.env): deployment/configuracion.md
+    - Operación y monitoreo: deployment/operacion.md
+  - Changelog: changelog.md

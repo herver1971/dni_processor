@@ -1,0 +1,44 @@
+name: Publicar documentación en GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'CHANGELOG.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:  # permite publicar manualmente desde la UI de GitHub
+
+permissions:
+  contents: write  # mkdocs gh-deploy necesita escribir la branch gh-pages
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # necesario para git-revision-date-localized
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache de dependencias pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-docs-${{ hashFiles('docs-requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-docs-
+
+      - name: Instalar dependencias de documentación
+        run: pip install -r docs-requirements.txt
+
+      - name: Publicar con mkdocs gh-deploy
+        run: mkdocs gh-deploy --force
